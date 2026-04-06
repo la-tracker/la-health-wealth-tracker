@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LA Health & Wealth Tracker</title>
+  <meta name="description" content="An interactive data tool tracking health, financial resources, and economic policy across Los Angeles council districts — built to visualize inequality and inspire civic action." />
+  <meta property="og:title" content="LA Health & Wealth Tracker" />
+  <meta property="og:description" content="Explore how health and wealth are connected across LA's 15 council districts." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-deep: #0d5c2e;
+      --green-mid: #1e8a4a;
+      --green-light: #52b87a;
+      --green-pale: #a8dbb8;
+      --neutral: #f0ece4;
+      --red-pale: #f5c4b0;
+      --red-light: #e07a5a;
+      --red-mid: #c0392b;
+      --red-deep: #7a1a10;
+      --cream: #faf8f4;
+      --ink: #1a1a18;
+      --ink-muted: #5a5a52;
+      --ink-faint: #9a9a90;
+      --border: #e2ddd6;
+      --card: #ffffff;
+      --serif: 'DM Serif Display', Georgia, serif;
+      --sans: 'DM Sans', system-ui, sans-serif;
+      --radius: 12px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--cream);
+      color: var(--ink);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--ink);
+      color: var(--cream);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .header-brand h1 {
+      font-family: var(--serif);
+      font-size: 19px;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      color: var(--cream);
+    }
+    .header-badge {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: var(--green-mid);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .header-meta {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: var(--ink);
+      color: var(--cream);
+      padding: 40px 32px 48px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .hero-inner {
+      max-width: 760px;
+    }
+    .hero h2 {
+      font-family: var(--serif);
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+    }
+    .hero h2 em {
+      font-style: italic;
+      color: var(--green-light);
+    }
+    .hero p {
+      font-size: 15px;
+      color: rgba(255,255,255,0.6);
+      max-width: 560px;
+      line-height: 1.65;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 32px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .hero-stat-num {
+      font-family: var(--serif);
+      font-size: 26px;
+      color: var(--green-light);
+      line-height: 1;
+    }
+    .hero-stat-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: .04em;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 0;
+      height: calc(100vh - 60px - 160px);
+      min-height: 520px;
+    }
+
+    /* ── MAP PANEL ── */
+    .map-panel {
+      position: relative;
+      background: #1e2018;
+      overflow: hidden;
+    }
+    .map-controls {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .controls-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      padding-left: 2px;
+    }
+    .index-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .itab {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer;
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.5);
+      transition: all .15s;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .itab:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.85); }
+    .itab.active { background: var(--green-mid); color: #fff; border-color: transparent; }
+
+    .legend {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      z-index: 10;
+      background: rgba(20,22,18,0.85);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .legend-title {
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 6px;
+    }
+    .legend-bar {
+      width: 140px;
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(to right, #7a1a10, #c0392b, #e07a5a, #f0ece4, #52b87a, #1e8a4a, #0d5c2e);
+      margin-bottom: 4px;
+    }
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+    }
+    .legend-labels span {
+      font-size: 9px;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .map-svg-wrap {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #mapsvg {
+      width: 100%;
+      height: 100%;
+    }
+    .district-path {
+      cursor: pointer;
+      stroke: #1e2018;
+      stroke-width: 1.5;
+      transition: stroke-width .12s, opacity .12s;
+    }
+    .district-path:hover { stroke: rgba(255,255,255,0.6); stroke-width: 2.5; }
+    .district-path.selected { stroke: #fff; stroke-width: 2.5; }
+    .d-label {
+      font-family: var(--sans);
+      font-size: 9px;
+      fill: rgba(255,255,255,0.7);
+      text-anchor: middle;
+      pointer-events: none;
+      font-weight: 600;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-placeholder {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 32px;
+      text-align: center;
+      color: var(--ink-faint);
+    }
+    .placeholder-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .sidebar-placeholder p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--ink-muted);
+    }
+    .sidebar-placeholder small {
+      font-size: 11px;
+      color: var(--ink-faint);
+    }
+
+    .district-panel { display: none; flex-direction: column; }
+    .district-panel.active { display: flex; }
+
+    .dp-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--cream);
+    }
+    .dp-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+    .dp-name {
+      font-family: var(--serif);
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+    }
+    .dp-area {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+    .score-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+    .score-good { background: #e6f4ec; color: #0d5c2e; }
+    .score-mid  { background: #fef3e0; color: #7a4a08; }
+    .score-bad  { background: #fde8e6; color: #7a1a10; }
+
+    .dp-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 12px;
+    }
+
+    /* Index score cards */
+    .indices {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .idx-card {
+      background: var(--cream);
+      border-radius: 8px;
+      padding: 10px 8px 8px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .idx-label {
+      font-size: 9px;
+      color: var(--ink-muted);
+      line-height: 1.3;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .idx-val {
+      font-family: var(--serif);
+      font-size: 22px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .idx-bar-wrap {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+    }
+    .idx-bar {
+      height: 3px;
+      border-radius: 2px;
+      transition: width .4s ease;
+    }
+
+    /* Health chips */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .chip {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+    .chip-bad  { background: #fde8e6; color: #7a1a10; border-color: #f5c4b0; }
+    .chip-ok   { background: #fef3e0; color: #7a4a08; border-color: #f5d88a; }
+    .chip-good { background: #e6f4ec; color: #0d5c2e; border-color: #a8dbb8; }
+
+    /* Policy section */
+    .policy-text {
+      font-size: 12.5px;
+      color: var(--ink);
+      line-height: 1.65;
+    }
+
+    /* Share & action */
+    .dp-actions {
+      padding: 14px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .btn-share {
+      width: 100%;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--cream);
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-share:hover { background: var(--border); }
+    .btn-primary {
+      width: 100%;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: none;
+      background: var(--green-mid);
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-primary:hover { background: var(--green-deep); }
+
+    /* ── ABOUT STRIP ── */
+    .about-strip {
+      background: var(--cream);
+      border-top: 1px solid var(--border);
+      padding: 28px 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 32px;
+    }
+    .about-block h3 {
+      font-family: var(--serif);
+      font-size: 15px;
+      font-weight: 400;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+    .about-block p {
+      font-size: 12px;
+      color: var(--ink-muted);
+      line-height: 1.65;
+    }
+    .about-block a {
+      color: var(--green-mid);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--ink);
+      color: rgba(255,255,255,0.35);
+      padding: 16px 32px;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    footer a { color: rgba(255,255,255,0.5); text-decoration: none; }
+    footer a:hover { color: var(--green-light); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 999;
+      transition: transform .3s ease;
+      pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .app-shell { grid-template-columns: 1fr; height: auto; }
+      .map-panel { height: 55vw; min-height: 280px; }
+      .sidebar { border-left: none; border-top: 1px solid var(--border); }
+      .about-strip { grid-template-columns: 1fr; gap: 20px; }
+      .hero { padding: 28px 20px 36px; }
+      header { padding: 0 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <h1>LA Health &amp; Wealth Tracker</h1>
+    <span class="header-badge">Prototype</span>
+  </div>
+  <div class="header-meta">15 council districts · 3 indices</div>
+</header>
+
+<div class="hero">
+  <div class="hero-inner">
+    <h2>Where you live <em>shapes</em><br>how long you live.</h2>
+    <p>This tool maps the connection between financial resources, health outcomes, and economic policy across Los Angeles's 15 council districts — to make inequality visible and civic action possible.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-num">15</span>
+        <span class="hero-stat-label">Council districts</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">3</span>
+        <span class="hero-stat-label">Indices tracked</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">14yr</span>
+        <span class="hero-stat-label">Life expectancy gap across districts</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app-shell">
+
+  <!-- MAP -->
+  <div class="map-panel">
+    <div class="map-controls">
+      <div class="controls-label">View by index</div>
+      <div class="index-tabs">
+        <button class="itab active" onclick="setIndex('composite', this)">Combined score</button>
+        <button class="itab" onclick="setIndex('resources', this)">Financial &amp; community resources</button>
+        <button class="itab" onclick="setIndex('health', this)">Health risk</button>
+        <button class="itab" onclick="setIndex('policy', this)">Economic policy access</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Resource access</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels">
+        <span>Fewer</span>
+        <span>More</span>
+      </div>
+    </div>
+
+    <svg id="mapsvg" viewBox="0 0 500 460" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+
+      <!-- CD3 West Valley / Woodland Hills -->
+      <path class="district-path" id="d3" d="M18,52 L92,42 L98,72 L82,104 L52,112 L20,92Z" onclick="selectDistrict(3)"/>
+      <!-- CD2 North Valley / Studio City -->
+      <path class="district-path" id="d2" d="M92,42 L168,36 L204,62 L198,82 L172,92 L132,87 L98,72Z" onclick="selectDistrict(2)"/>
+      <!-- CD1 Northeast / Glassell Park -->
+      <path class="district-path" id="d1" d="M204,62 L244,56 L264,82 L258,112 L232,122 L208,108 L198,82Z" onclick="selectDistrict(1)"/>
+      <!-- CD7 Sunland / Pacoima -->
+      <path class="district-path" id="d7" d="M244,56 L316,50 L326,77 L304,102 L278,107 L264,82Z" onclick="selectDistrict(7)"/>
+      <!-- CD12 Chatsworth / Granada Hills -->
+      <path class="district-path" id="d12" d="M20,92 L52,112 L82,104 L72,114 L56,144 L24,142 L14,118Z" onclick="selectDistrict(12)"/>
+      <!-- CD6 Van Nuys / Reseda -->
+      <path class="district-path" id="d6" d="M82,104 L132,87 L148,118 L102,132 L82,127 L72,114Z" onclick="selectDistrict(6)"/>
+      <!-- CD4 Hollywood Hills / Sherman Oaks -->
+      <path class="district-path" id="d4" d="M172,92 L208,108 L214,134 L188,148 L158,138 L148,118 L158,97Z" onclick="selectDistrict(4)"/>
+      <!-- CD14 Eagle Rock / Boyle Heights -->
+      <path class="district-path" id="d14" d="M258,112 L306,102 L318,128 L308,158 L282,163 L267,158 L258,133 L232,122Z" onclick="selectDistrict(14)"/>
+      <!-- CD13 Hollywood / Silver Lake -->
+      <path class="district-path" id="d13" d="M214,134 L232,122 L258,133 L267,158 L247,168 L222,163 L213,148Z" onclick="selectDistrict(13)"/>
+      <!-- CD5 West LA / Bel Air -->
+      <path class="district-path" id="d5" d="M102,132 L148,118 L158,138 L154,168 L122,178 L92,163 L90,143Z" onclick="selectDistrict(5)"/>
+      <!-- CD10 West Adams / Crenshaw -->
+      <path class="district-path" id="d10" d="M158,138 L188,148 L196,178 L200,198 L174,202 L160,195 L158,172 L154,168Z" onclick="selectDistrict(10)"/>
+      <!-- CD11 Venice / Pacific Palisades -->
+      <path class="district-path" id="d11" d="M62,198 L102,188 L122,202 L120,228 L96,242 L62,238 L46,218Z" onclick="selectDistrict(11)"/>
+      <!-- Mid connector area (part of CD10 visual) -->
+      <path class="district-path" id="dC" d="M122,178 L154,168 L158,172 L160,195 L130,198 L108,194 L108,180Z" onclick="selectDistrict(10)" style="pointer-events:none"/>
+      <!-- CD9 Central / South LA -->
+      <path class="district-path" id="d9" d="M240,200 L270,196 L280,220 L276,252 L252,260 L240,232Z" onclick="selectDistrict(9)"/>
+      <!-- CD8 South LA / Hyde Park -->
+      <path class="district-path" id="d8" d="M198,208 L240,200 L240,232 L252,260 L244,296 L212,306 L186,280 L183,254Z" onclick="selectDistrict(8)"/>
+      <!-- CD15 Harbor / San Pedro -->
+      <path class="district-path" id="d15" d="M242,314 L282,308 L302,338 L292,374 L257,378 L232,352 L230,328Z" onclick="selectDistrict(15)"/>
+
+      <!-- District number labels -->
+      <text class="d-label" x="228" y="92">1</text>
+      <text class="d-label" x="150" y="64">2</text>
+      <text class="d-label" x="54" y="80">3</text>
+      <text class="d-label" x="184" y="120">4</text>
+      <text class="d-label" x="122" y="155">5</text>
+      <text class="d-label" x="106" y="112">6</text>
+      <text class="d-label" x="284" y="78">7</text>
+      <text class="d-label" x="212" y="272">8</text>
+      <text class="d-label" x="256" y="232">9</text>
+      <text class="d-label" x="174" y="178">10</text>
+      <text class="d-label" x="86" y="220">11</text>
+      <text class="d-label" x="38" y="124">12</text>
+      <text class="d-label" x="240" y="152">13</text>
+      <text class="d-label" x="290" y="135">14</text>
+      <text class="d-label" x="264" y="348">15</text>
+
+      <!-- Ocean suggestion -->
+      <text x="26" y="298" font-size="8" fill="rgba(255,255,255,0.2)" transform="rotate(-72,26,298)">Pacific</text>
+    </svg>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-placeholder" id="placeholder">
+      <div class="placeholder-icon">🗺️</div>
+      <p>Click any district on the map to explore its health and wealth data.</p>
+      <small>15 council districts · hover to highlight · click to explore</small>
+    </div>
+
+    <div class="district-panel" id="dpanel">
+      <div class="dp-header">
+        <div class="dp-top">
+          <div class="dp-name" id="dp-name">CD 5</div>
+          <div class="score-badge score-good" id="dp-badge">Score 84</div>
+        </div>
+        <div class="dp-area" id="dp-area">West LA · Bel Air · Westwood</div>
+      </div>
+
+      <div class="dp-section">
+        <div class="section-label">Index scores (0 = worst · 100 = best)</div>
+        <div class="indices">
+          <div class="idx-card">
+            <div class="idx-label">Financial &amp; community resources</div>
+            <div class="idx-val" id="idx-res" style="color: var(--green-deep)">88</div>
+            <div class="idx-bar-wrap"><div class="idx-bar" id="bar-res"></div></div>
+          </div>
+          <div class="idx-card">
+            <div class="idx-label">Health risk<br>(lower = safer)</div>
+            <div class="idx-val" id="idx-hlth" style="color: var(--green-deep)">22</div>
+            <div class="idx-bar-wrap"><div class="idx-bar" id="bar-hlth"></div></div>
+          </div>
+          <div class="idx-card">
+            <div class="idx-label">Economic policy access</div>
+            <div class="idx-val" id="idx-pol" style="color: var(--green-deep)">85</div>
+            <div class="idx-bar-wrap"><div class="idx-bar" id="bar-pol"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dp-section">
+        <div class="section-label">Health outcomes</div>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div class="dp-section">
+        <div class="section-label">Economic policy snapshot</div>
+        <p class="policy-text" id="policy-text"></p>
+      </div>
+
+      <div class="dp-actions">
+        <button class="btn-primary" onclick="shareDistrict()">Share this district's data ↗</button>
+        <button class="btn-share" onclick="copyLink()">Copy link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<div class="about-strip">
+  <div class="about-block">
+    <h3>Why this tracker exists</h3>
+    <p>Your zip code is one of the strongest predictors of your health and financial security. This tool makes that connection visible — so residents, advocates, and policymakers can see where disparities are greatest and act on them.</p>
+  </div>
+  <div class="about-block">
+    <h3>How the indices work</h3>
+    <p>Each district is scored across three composite indices: financial &amp; community resources (income, school quality, home ownership, nature access), health risk (substance use, chronic disease, life expectancy), and economic policy access (food access, financial services, recreation). Scores range from 0–100.</p>
+  </div>
+  <div class="about-block">
+    <h3>Built for civic action</h3>
+    <p>This prototype was built by a Los Angeles high school student to inspire youth civic engagement. Data sources include LA County DPH, USC Neighborhood Data for Social Change, and USDA food environment data. <a href="#">Read the methodology →</a></p>
+  </div>
+</div>
+
+<footer>
+  <span>LA Health &amp; Wealth Tracker · Prototype · Los Angeles, CA</span>
+  <span>Data: LA County DPH · USC Price School · USDA · <a href="#">GitHub</a></span>
+</footer>
+
+<div class="toast" id="toast">Link copied!</div>
+
+<script>
+  const districts = {
+    1:  { name:'CD 1', area:'Northeast LA · Glassell Park · Highland Park', res:45, hlth:62, pol:40,
+          chips:[['Substance use: elevated','bad'],['Asthma: moderate','ok'],['Life expectancy: 76 yrs','ok']],
+          policy:'Ongoing rezoning near the Dodger Stadium corridor. Limited community land trust activity. Transit investment proposed along N. Figueroa Street. Food desert gaps on eastern boundary.' },
+    2:  { name:'CD 2', area:'North Valley · Studio City · Toluca Lake', res:61, hlth:44, pol:58,
+          chips:[['Low opioid rate','good'],['Obesity: moderate','ok'],['Life expectancy: 80 yrs','good']],
+          policy:'Active HOA-driven planning processes. SR-101 air quality mitigation pending. Small business corridor support through Business Improvement Districts. Limited affordable housing production.' },
+    3:  { name:'CD 3', area:'West Valley · Woodland Hills · Tarzana', res:70, hlth:36, pol:67,
+          chips:[['Low substance use','good'],['Diabetes: moderate','ok'],['Life expectancy: 83 yrs','good']],
+          policy:'High homeownership corridor. AQMD monitoring station expansion approved 2023. Trailhead access funding in 2024 budget. Strong park acreage per capita. Limited transit connectivity.' },
+    4:  { name:'CD 4', area:'Hollywood Hills · Sherman Oaks · Los Feliz', res:68, hlth:40, pol:63,
+          chips:[['Low mortality rate','good'],['Anxiety & depression: moderate','ok'],['Life expectancy: 81 yrs','good']],
+          policy:'Renter protection overlay in Sherman Oaks contested. Metro Purple Line extension drives land value pressure near Wilshire. Farmers market presence strong. Park access above city median.' },
+    5:  { name:'CD 5', area:'West LA · Bel Air · Westwood · Cheviot Hills', res:88, hlth:22, pol:85,
+          chips:[['Lowest health risk in city','good'],['Longevity: top 5%','good'],['Life expectancy: 86 yrs','good']],
+          policy:'Highest walkability index in city. Dense farmers market network. Mortgage approval rates among highest in LA. Park acreage per capita #1 citywide. Ballot measure for coastal park access passed 2023.' },
+    6:  { name:'CD 6', area:'Van Nuys · Reseda · North Hollywood', res:38, hlth:68, pol:35,
+          chips:[['Substance abuse: high','bad'],['Diabetes: elevated','bad'],['Life expectancy: 73 yrs','bad']],
+          policy:'Four census tracts carry active food desert designation. Predatory lending concentration flagged by CFPB. Pending park investment proposal under council review. Transit-oriented development opportunities underutilized.' },
+    7:  { name:'CD 7', area:'Sunland · Pacoima · Arleta · Shadow Hills', res:35, hlth:72, pol:32,
+          chips:[['Asthma: elevated','bad'],['Childhood obesity: high','bad'],['Life expectancy: 72 yrs','bad']],
+          policy:'Environmental justice overlay near I-210 freeway. Grocery store gap documented in 2023 DPH report. LA River revitalization funding partially allocated. Among lowest park access scores in city.' },
+    8:  { name:'CD 8', area:'South LA · Hyde Park · Leimert Park', res:28, hlth:76, pol:28,
+          chips:[['Highest mortality risk','bad'],['Substance abuse: very high','bad'],['Life expectancy: 70 yrs','bad']],
+          policy:'CRA/LA redevelopment legacy gaps persist. Proposed Crenshaw corridor healthy food incentive program stalled in council. Foreclosure rate 3× city average. Limited fresh food retail. Mortgage denial rates among highest in city.' },
+    9:  { name:'CD 9', area:'Central LA · South LA · Exposition Park', res:30, hlth:74, pol:30,
+          chips:[['HIV rate: elevated','bad'],['Homicide risk: high','bad'],['Life expectancy: 71 yrs','bad']],
+          policy:'Opportunity zone designation with limited realized private investment. SNAP enrollment strong — access is the gap, not enrollment. Payday lending density among highest in LA County. Affordable housing pipeline largest in city but behind on delivery.' },
+    10: { name:'CD 10', area:'West Adams · Crenshaw · Mid-City · Koreatown', res:42, hlth:58, pol:44,
+          chips:[['Gentrification pressure','bad'],['Diabetes: moderate','ok'],['Life expectancy: 76 yrs','ok']],
+          policy:'Crenshaw Metro Line opening accelerated displacement. Community benefits agreement negotiation ongoing near transit nodes. Fresh produce incentive pilot active in 3 zip codes. Renter protections active but enforcement gaps documented.' },
+    11: { name:'CD 11', area:'Venice · West LA · Pacific Palisades · Brentwood', res:78, hlth:31, pol:72,
+          chips:[['Low substance risk','good'],['Active lifestyle index: high','good'],['Life expectancy: 84 yrs','good']],
+          policy:'Ballot measure for coastal park access passed 2023. High mortgage approval rates. Farmers market network among densest in city. Bikeway expansion fully funded. Beach access equity program launched 2024.' },
+    12: { name:'CD 12', area:'Chatsworth · Granada Hills · Porter Ranch', res:72, hlth:34, pol:68,
+          chips:[['Low disease burden','good'],['Strong school ratings','good'],['Life expectancy: 83 yrs','good']],
+          policy:'High owner-occupancy rate. Trail access to Santa Susana Mountains. Car-dependent patterns limit transit-linked opportunity. Limited affordable housing production. Strong park acreage per resident.' },
+    13: { name:'CD 13', area:'Hollywood · Silver Lake · Echo Park · Atwater Village', res:52, hlth:53, pol:50,
+          chips:[['Substance use: moderate','ok'],['Mental health access: limited','ok'],['Life expectancy: 77 yrs','ok']],
+          policy:'Rapid gentrification displacing long-term renters. Street medicine expansion funded 2024 budget. Mixed record on affordable housing production despite high demand. Significant arts and civic investment alongside displacement pressure.' },
+    14: { name:'CD 14', area:'Eagle Rock · El Sereno · Boyle Heights · Cypress Park', res:40, hlth:63, pol:38,
+          chips:[['Air quality: poor','bad'],['Obesity: elevated','ok'],['Life expectancy: 74 yrs','ok']],
+          policy:'Freeway proximity health impacts formally documented. Community land trust active in Boyle Heights. LA River path expansion proposed but unfunded. High industrial adjacency. Limited grocery access in eastern portions.' },
+    15: { name:'CD 15', area:'Harbor · San Pedro · Watts · Wilmington', res:33, hlth:70, pol:31,
+          chips:[['Port pollution burden: severe','bad'],['Asthma: high','bad'],['Life expectancy: 72 yrs','bad']],
+          policy:'Port of LA emissions create disproportionate health burden. Green Zone designation passed 2022. Waterfront park expansion underway but slow. Mortgage denial rates elevated. Grocery access improving but still below city median.' }
+  };
+
+  function scoreColor(s) {
+    if (s >= 75) return '#0d5c2e';
+    if (s >= 62) return '#1e8a4a';
+    if (s >= 50) return '#52b87a';
+    if (s >= 42) return '#a8dbb8';
+    if (s >= 35) return '#f5d88a';
+    if (s >= 28) return '#e07a5a';
+    return '#c0392b';
+  }
+
+  function compositeColor(d) {
+    const score = Math.round((d.res + (100 - d.hlth) + d.pol) / 3);
+    return scoreColor(score);
+  }
+
+  const colorFns = {
+    composite: d => compositeColor(d),
+    resources: d => scoreColor(d.res),
+    health:    d => scoreColor(100 - d.hlth),
+    policy:    d => scoreColor(d.pol)
+  };
+
+  let activeIndex = 'composite';
+
+  function setIndex(idx, btn) {
+    activeIndex = idx;
+    document.querySelectorAll('.itab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    paintMap();
+  }
+
+  function paintMap() {
+    Object.entries(districts).forEach(([k, d]) => {
+      const el = document.getElementById('d' + k);
+      if (el) el.style.fill = colorFns[activeIndex](d);
+    });
+    const dC = document.getElementById('dC');
+    if (dC) dC.style.fill = colorFns[activeIndex](districts[10]);
+  }
+
+  let selectedId = null;
+
+  function selectDistrict(id) {
+    const d = districts[id];
+    if (!d) return;
+    selectedId = id;
+
+    document.getElementById('placeholder').style.display = 'none';
+    const panel = document.getElementById('dpanel');
+    panel.classList.add('active');
+
+    document.getElementById('dp-name').textContent = d.name;
+    document.getElementById('dp-area').textContent = d.area;
+
+    const score = Math.round((d.res + (100 - d.hlth) + d.pol) / 3);
+    const badge = document.getElementById('dp-badge');
+    badge.textContent = 'Score ' + score;
+    badge.className = 'score-badge ' + (score >= 65 ? 'score-good' : score >= 45 ? 'score-mid' : 'score-bad');
+
+    // Index values
+    const resEl  = document.getElementById('idx-res');
+    const hlthEl = document.getElementById('idx-hlth');
+    const polEl  = document.getElementById('idx-pol');
+
+    resEl.textContent  = d.res;
+    hlthEl.textContent = d.hlth;
+    polEl.textContent  = d.pol;
+
+    resEl.style.color  = scoreColor(d.res);
+    hlthEl.style.color = scoreColor(100 - d.hlth);
+    polEl.style.color  = scoreColor(d.pol);
+
+    document.getElementById('bar-res').style.width      = d.res + '%';
+    document.getElementById('bar-res').style.background = scoreColor(d.res);
+    document.getElementById('bar-hlth').style.width     = d.hlth + '%';
+    document.getElementById('bar-hlth').style.background = scoreColor(100 - d.hlth);
+    document.getElementById('bar-pol').style.width      = d.pol + '%';
+    document.getElementById('bar-pol').style.background = scoreColor(d.pol);
+
+    // Chips
+    document.getElementById('chips').innerHTML = d.chips
+      .map(([label, cls]) => `<span class="chip chip-${cls}">${label}</span>`)
+      .join('');
+
+    document.getElementById('policy-text').textContent = d.policy;
+
+    // Map selection state
+    document.querySelectorAll('.district-path').forEach(p => p.classList.remove('selected'));
+    const sel = document.getElementById('d' + id);
+    if (sel) sel.classList.add('selected');
+
+    // Update URL hash
+    history.replaceState(null, '', '#cd' + id);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function shareDistrict() {
+    const url = window.location.href.split('#')[0] + '#cd' + (selectedId || '');
+    if (navigator.share) {
+      navigator.share({ title: 'LA Health & Wealth Tracker', url });
+    } else {
+      navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard!'));
+    }
+  }
+
+  function copyLink() {
+    const url = window.location.href.split('#')[0] + (selectedId ? '#cd' + selectedId : '');
+    navigator.clipboard.writeText(url).then(() => showToast('Link copied!'));
+  }
+
+  // Init: paint map and restore hash
+  paintMap();
+
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#cd')) {
+    const id = parseInt(hash.replace('#cd', ''));
+    if (districts[id]) selectDistrict(id);
+  } else {
+    // Default: open CD 8 to lead with a high-need district
+    selectDistrict(8);
+  }
+</script>
+</body>
+</html>
