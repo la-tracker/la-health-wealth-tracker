@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Interactive map of health, financial resources, and neighborhood access across the 15 Los Angeles City Council districts. Prototype with estimated scores." />
+<meta property="og:title" content="LA Health & Wealth Tracker" />
+<meta property="og:description" content="How health and wealth line up across LA's 15 council districts." />
+<meta property="og:type" content="website" />
+<title>LA Health &amp; Wealth Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    color-scheme: light;
+
+    /* diverging scale, 7 bands */
+    --b7: #0d5c2e;  /* strongest */
+    --b6: #1e8a4a;
+    --b5: #52b87a;
+    --b4: #a8dbb8;
+    --b3: #e8c86a;
+    --b2: #dd7d4f;
+    --b1: #a8291a;  /* widest gap */
+
+    --cream: #faf8f4;
+    --card: #ffffff;
+    --ink: #1a1a18;
+    --ink-2: #2a2c26;
+    --ink-muted: #55564d;
+    --ink-faint: #8a8b80;
+    --border: #e3ded5;
+    --border-strong: #cfc8bc;
+    --amber-bg: #fdf4e0;
+    --amber-line: #e5c97a;
+    --amber-ink: #6b4c06;
+
+    --serif: 'DM Serif Display', Georgia, 'Times New Roman', serif;
+    --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; }
+
+  :focus-visible { outline: 2px solid var(--b6); outline-offset: 2px; border-radius: 3px; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--ink);
+    color: var(--cream);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-in {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; min-height: 58px; padding-block: 10px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .brand h1 {
+    font-family: var(--serif); font-size: 19px; font-weight: 400;
+    letter-spacing: -0.01em; margin: 0; color: var(--cream);
+  }
+  .tag-proto {
+    font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+    background: rgba(255,255,255,0.12); color: #f3efe6;
+    padding: 3px 9px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.2);
+  }
+  .header-meta { font-size: 12px; color: rgba(250,248,244,0.55); }
+
+  /* ── HERO ── */
+  .hero { background: var(--ink); color: var(--cream); padding-block: 34px 40px; }
+  .hero h2 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(27px, 4.4vw, 42px); line-height: 1.1;
+    letter-spacing: -0.02em; margin: 0 0 14px; max-width: 15ch; text-wrap: balance;
+  }
+  .hero h2 em { font-style: italic; color: #74cf95; }
+  .hero p { font-size: 15px; color: rgba(250,248,244,0.62); max-width: 58ch; margin: 0; }
+  .hero-stats {
+    display: flex; flex-wrap: wrap; gap: 14px 38px; margin-top: 26px;
+    padding-top: 22px; border-top: 1px solid rgba(255,255,255,0.12);
+  }
+  .hstat { display: flex; flex-direction: column; gap: 3px; }
+  .hstat b {
+    font-family: var(--serif); font-weight: 400; font-size: 27px;
+    line-height: 1; color: #74cf95; font-variant-numeric: tabular-nums;
+  }
+  .hstat span { font-size: 11.5px; color: rgba(250,248,244,0.5); letter-spacing: .02em; }
+
+  /* ── ESTIMATE NOTICE ── */
+  .notice {
+    background: var(--amber-bg);
+    border-bottom: 1px solid var(--amber-line);
+  }
+  .notice-in {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding-block: 11px; font-size: 12.5px; color: var(--amber-ink); line-height: 1.5;
+  }
+  .notice-in strong { font-weight: 700; }
+  .notice-dot {
+    flex: none; width: 7px; height: 7px; border-radius: 50%;
+    background: #c9922a; margin-top: 7px;
+  }
+
+  /* ── APP ── */
+  .app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 22px;
+    padding-block: 22px;
+    align-items: start;
+  }
+
+  /* map */
+  .map-panel {
+    position: relative;
+    background: var(--ink-2);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--ink);
+  }
+  .map-controls { position: absolute; top: 14px; left: 14px; z-index: 6; }
+  .ctl-label {
+    font-size: 9.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: rgba(255,255,255,0.4); margin-bottom: 7px;
+  }
+  .itabs { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+  .itab {
+    font-family: var(--sans); font-size: 11.5px; font-weight: 500;
+    padding: 6px 12px; border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.62);
+    cursor: pointer; text-align: left; transition: background .15s, color .15s;
+  }
+  .itab:hover { background: rgba(255,255,255,0.12); color: #fff; }
+  .itab[aria-pressed="true"] { background: #1e8a4a; color: #fff; border-color: #2fa25c; font-weight: 600; }
+
+  .legend {
+    position: absolute; bottom: 14px; left: 14px; z-index: 6;
+    background: rgba(18,20,16,0.9);
+    border: 1px solid rgba(255,255,255,0.13);
+    border-radius: 7px; padding: 9px 12px;
+  }
+  .legend-title {
+    font-size: 9px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+    color: rgba(255,255,255,0.5); margin-bottom: 6px;
+  }
+  .legend-bar {
+    width: 150px; height: 8px; border-radius: 2px;
+    background: linear-gradient(to right, #a8291a, #dd7d4f, #e8c86a, #a8dbb8, #52b87a, #1e8a4a, #0d5c2e);
+  }
+  .legend-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+  .legend-labels span { font-size: 9.5px; color: rgba(255,255,255,0.45); }
+
+  .map-note {
+    position: absolute; right: 14px; bottom: 14px; z-index: 6;
+    font-size: 9.5px; color: rgba(255,255,255,0.3); max-width: 130px; text-align: right; line-height: 1.4;
+  }
+
+  #mapsvg { display: block; width: 100%; height: auto; }
+  .district-path {
+    cursor: pointer; stroke: #2a2c26; stroke-width: 1.5;
+    transition: stroke-width .12s;
+  }
+  .district-path:hover { stroke: rgba(255,255,255,0.7); stroke-width: 2.5; }
+  .district-path:focus-visible { stroke: #fff; stroke-width: 3; outline: none; }
+  .district-path[aria-pressed="true"] { stroke: #fff; stroke-width: 3; }
+  .d-label {
+    font-family: var(--sans); font-size: 10px; font-weight: 700;
+    fill: rgba(255,255,255,0.82); text-anchor: middle; pointer-events: none;
+    paint-order: stroke; stroke: rgba(0,0,0,0.35); stroke-width: 2.5px;
+  }
+
+  /* detail panel */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .p-head { padding: 17px 18px 15px; background: var(--cream); border-bottom: 1px solid var(--border); }
+  .p-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .p-name { font-family: var(--serif); font-size: 21px; font-weight: 400; line-height: 1.1; }
+  .p-area { font-size: 12px; color: var(--ink-muted); margin-top: 5px; }
+  .p-rank { font-size: 11.5px; color: var(--ink-faint); margin-top: 7px; font-variant-numeric: tabular-nums; }
+  .badge {
+    font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 4px;
+    white-space: nowrap; font-variant-numeric: tabular-nums; flex: none;
+  }
+
+  .p-sec { padding: 15px 18px; border-bottom: 1px solid var(--border); }
+  .p-sec:last-of-type { border-bottom: none; }
+  .sec-label {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 11px;
+  }
+
+  .idx-row { display: flex; flex-direction: column; gap: 11px; }
+  .idx {
+    display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; align-items: baseline;
+  }
+  .idx-name { font-size: 12px; font-weight: 500; color: var(--ink); }
+  .idx-scale { font-size: 10.5px; color: var(--ink-faint); font-weight: 400; }
+  .idx-val {
+    font-family: var(--serif); font-size: 20px; line-height: 1;
+    font-variant-numeric: tabular-nums; grid-row: span 2;
+  }
+  .idx-track { grid-column: 1; height: 5px; background: #eee9e0; border-radius: 3px; overflow: hidden; }
+  .idx-fill { height: 100%; border-radius: 3px; transition: width .35s ease; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 3px; border: 1px solid; }
+  .chip-bad  { background: #fbeae7; color: #8a2318; border-color: #eec3ba; }
+  .chip-ok   { background: #fdf3e2; color: #6b4c06; border-color: #ecd79c; }
+  .chip-good { background: #e7f3ec; color: #0d5c2e; border-color: #b6ddc4; }
+
+  .policy { font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
+  .policy-src { font-size: 10.5px; color: var(--ink-faint); margin-top: 9px; }
+
+  .p-actions { padding: 14px 18px 17px; display: flex; gap: 8px; }
+  .btn {
+    flex: 1; padding: 9px 12px; border-radius: 5px; cursor: pointer;
+    font-family: var(--sans); font-size: 12px; font-weight: 600; transition: background .15s;
+  }
+  .btn-primary { background: #1e8a4a; color: #fff; border: 1px solid #1e8a4a; }
+  .btn-primary:hover { background: var(--b7); border-color: var(--b7); }
+  .btn-ghost { background: var(--cream); color: var(--ink); border: 1px solid var(--border-strong); }
+  .btn-ghost:hover { background: #efeae1; }
+
+  /* ── RANKING TABLE ── */
+  .rank-sec { padding-block: 8px 34px; }
+  .rank-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .rank-head h3 { font-family: var(--serif); font-size: 20px; font-weight: 400; margin: 0; }
+  .rank-head p { font-size: 12.5px; color: var(--ink-muted); margin: 0; }
+  .table-scroll { overflow-x: auto; margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13px; }
+  caption { text-align: left; padding: 0 0 8px; font-size: 12px; color: var(--ink-faint); }
+  th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  thead th {
+    font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-faint); background: var(--cream); white-space: nowrap;
+    position: sticky; top: 0;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #f7f4ee; }
+  tbody tr[aria-selected="true"] { background: #eef6f1; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .swatch {
+    display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+    margin-right: 7px; vertical-align: -1px;
+  }
+  .cd-cell { font-weight: 600; white-space: nowrap; }
+  .area-cell { color: var(--ink-muted); font-size: 12px; }
+
+  /* ── ABOUT ── */
+  .about { background: var(--card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .about-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 26px; padding-block: 30px;
+  }
+  .about-grid h3 { font-family: var(--serif); font-size: 16px; font-weight: 400; margin: 0 0 7px; }
+  .about-grid p { font-size: 12.5px; color: var(--ink-muted); line-height: 1.65; margin: 0; }
+  .about-grid a { color: #1e8a4a; font-weight: 600; text-decoration: none; border-bottom: 1px solid #a8dbb8; }
+  .about-grid a:hover { color: var(--b7); }
+
+  footer { background: var(--ink); color: rgba(250,248,244,0.4); }
+  .footer-in {
+    padding-block: 16px; font-size: 11.5px; display: flex;
+    justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%;
+    transform: translateX(-50%) translateY(90px);
+    background: var(--ink); color: #fff; padding: 10px 19px;
+    border-radius: 5px; font-size: 13px; font-weight: 500;
+    z-index: 999; transition: transform .28s ease; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body style="margin:0">
+
+
+<header>
+  <div class="wrap header-in">
+    <div class="brand">
+      <h1>LA Health &amp; Wealth Tracker</h1>
+      <span class="tag-proto">Prototype</span>
+    </div>
+    <div class="header-meta">15 council districts · 3 indices · scores are estimates</div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h2>Where you live <em>shapes</em> how long you live.</h2>
+    <p>This map tracks financial resources, health outcomes, and neighborhood access across the 15 Los Angeles City Council districts, so residents and advocates can see where the gaps are widest.</p>
+    <div class="hero-stats">
+      <div class="hstat"><b>15</b><span>Council districts</span></div>
+      <div class="hstat"><b>3</b><span>Indices per district</span></div>
+      <div class="hstat"><b id="hs-gap">16 yrs</b><span>Life expectancy gap, highest to lowest district</span></div>
+      <div class="hstat"><b id="hs-spread">60 pts</b><span>Spread in combined score</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="notice">
+  <div class="wrap notice-in">
+    <span class="notice-dot" aria-hidden="true"></span>
+    <p style="margin:0"><strong>These scores are estimates, not verified counts.</strong> They were built to demonstrate how the tool works and follow the direction of public data. They have not been checked against complete district-level records. A verified version is in progress. See the methodology before quoting any figure.</p>
+  </div>
+</div>
+
+<div class="wrap app">
+
+  <div class="map-panel">
+    <div class="map-controls">
+      <div class="ctl-label" id="ctl-label">Color the map by</div>
+      <div class="itabs" role="group" aria-labelledby="ctl-label">
+        <button class="itab" type="button" aria-pressed="true"  data-idx="composite">Combined score</button>
+        <button class="itab" type="button" aria-pressed="false" data-idx="resources">Financial &amp; community resources</button>
+        <button class="itab" type="button" aria-pressed="false" data-idx="health">Health risk</button>
+        <button class="itab" type="button" aria-pressed="false" data-idx="policy">Neighborhood access</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title" id="legend-title">Combined score</div>
+      <div class="legend-bar" aria-hidden="true"></div>
+      <div class="legend-labels"><span id="legend-lo">Widest gaps</span><span id="legend-hi">Strongest</span></div>
+    </div>
+
+    <p class="map-note">Official city boundaries, 2012 redistricting. See note below.</p>
+
+    <svg id="mapsvg" viewBox="0 0 520 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Map of the 15 Los Angeles city council districts">
+      <path class="district-path" id="d1" data-cd="1" d="M350.2,244L350.1,239.9L366.2,248.6L367.6,246L366.7,240.2L367.7,239L367.6,236L369.2,232.9L375.2,235.7L373.6,231.2L374.6,228.3L376.1,227.6L377,225.2L379.3,224.9L381.2,222.2L382.8,223L383.3,222.3L390.4,227.7L388.8,220.9L387.3,219L381.7,216.7L380,213.6L379.3,208.2L377.2,206.3L374.8,205.7L375.9,203.8L379.7,200.8L395,192.4L418.7,198L421.4,200L417.5,203.3L419.6,206.4L416.1,209.6L417.3,209.6L416.2,212L417.1,212.3L416.4,214.3L417.3,214.3L416.1,220.6L414.8,220.7L414.9,225L410.6,226.6L411.2,227.3L410.2,229.2L411.5,229.5L410.5,231.7L411.7,235.3L413.8,232.6L414.3,233.5L412,243.3L406.7,242.4L395.4,244.7L396.4,242.1L392.6,240.7L390.8,245.3L385.1,246L383,248.7L380.7,248L379.3,249.5L375.2,244.9L367.5,253.8L358.8,261.1L357.8,263.7L357.2,272.1L356,274.4L350.4,271.3L350.4,266.8L338.9,266.9L339.1,253.8L345.5,253.8L345.2,247.4L347.7,247.4L347.7,246.5L350.2,246.5L350.2,247.2L351.6,244.7L350.2,244Z"/>
+      <path class="district-path" id="d2" data-cd="2" d="M292.9,103L307.7,103.5L307.8,106.6L310.9,106.5L311.1,109.6L312.7,109.5L314.6,114.2L313.3,115.1L312.4,117.9L310.9,118L310.8,122L294.5,121.7L295.1,126.6L289.4,126.6L289.4,130.7L295.8,132.1L298.2,151.3L299.2,154.2L295.5,154.4L295.5,163.7L293.2,163.7L293.2,167.6L289.3,167.8L289.1,163.7L282.9,163.8L287.8,171.5L289.4,172.9L289.4,171.9L293.5,171.9L295.6,176.3L295,176.2L295,177.2L295.6,177.2L294.5,178.7L295.1,178.8L294.3,181.3L292.2,181.9L291.6,183.3L292.2,184.8L293.5,185.3L293.5,188.6L289.8,188L287.2,186.5L288.6,190.2L286.7,190.3L285.5,194.3L281.9,193.3L278.1,194.6L277.2,193.1L276,193.1L273.1,195.8L270.2,196.7L269.6,194.6L266.2,191.4L265.5,189.1L264,189.5L263.3,188L262.1,187.6L258.4,188.7L257.2,188.1L256.3,179.5L253.4,176.9L253.3,173.6L252.4,173.4L252.4,170.5L253.6,171.7L255.5,171.8L255.5,166.9L257.7,166.9L258.6,164.4L265.6,164.6L260,161L258.6,151.4L240,151.4L240,138.1L235.4,138.1L235.4,132.7L240.1,132.8L240.1,126.5L233.8,126.5L233.8,117.5L249.5,121.2L252.3,109L270.8,109L270.8,120.3L289.3,120.3L289.3,114.1L290.7,114.1L291.7,112.5L290.3,111.1L292,108.6L296.8,109.1L297.2,108.4L292.9,103Z"/>
+      <path class="district-path" id="d3" data-cd="3" d="M184.4,120.3L184.5,139L178.3,139L178.3,162.9L176.2,169.6L175.2,169L175.2,172.9L174.1,172.9L175.2,174.7L175.3,184.6L171.1,184.7L171.1,187L169.7,186.4L169.8,187.5L168.1,188.3L167.7,189.6L164,190.9L159.6,190.7L158.8,190L159.4,188.5L157.9,188.7L157.2,189.9L154.4,187.1L152.3,186.4L151.4,187L116.3,170.9L116.3,172.6L106.3,172.6L105.4,170L104.1,169.8L99.6,163.7L97.7,164.5L97.7,163.2L98.7,162.5L97.2,160L94.6,160L94.6,156.9L88.4,156.8L88.5,153.7L85.4,153.7L85.4,147.4L78.6,147.4L78.6,140.4L84.4,141.4L95.7,139L116.5,139.1L116.4,110.8L122.7,110.7L122.7,105L125,101.6L123.4,97.2L138.6,97.2L140.4,100.2L147.3,100.3L147.3,103.4L153.5,103.4L153.5,110.1L165,109.9L165.1,112L166.5,114.2L169,114.2L169,115.7L172.1,115.7L172.1,120.4L184.4,120.3Z"/>
+      <path class="district-path" id="d4" data-cd="4" d="M240,145.2L240,151.4L258.6,151.4L260,161L265.6,164.6L258.6,164.4L257.7,166.9L255.5,166.9L255.5,171.8L253.6,171.7L252.4,170.5L252.4,173.4L253.3,173.6L253.4,176.9L256.3,179.5L257.2,188.1L258.4,188.7L262.1,187.6L263.3,188L264,189.5L265.5,189.1L266.2,191.4L269.6,194.6L270.1,196.7L273.1,195.8L276,193.1L277.2,193.1L278.1,194.6L281.9,193.3L285.5,194.3L286.7,190.3L288.6,190.2L287.2,186.5L289.8,188L293.5,188.6L293.5,185.3L292.2,184.8L291.6,183.3L292.2,181.9L294.3,181.3L295.1,178.8L294.5,178.7L295.6,177.2L295,177.2L295,176.2L295.6,176.3L293.5,171.9L289.4,171.9L289.4,172.9L287.8,171.5L282.9,163.8L289.1,163.7L289.3,167.8L293.2,167.6L293.2,163.7L295.5,163.7L295.5,154.4L299.2,154.2L300.4,157.5L298.6,157.6L298.6,160.6L301.5,160.6L307.1,176.6L310.2,174.1L311.6,174.4L317.1,171.7L323.4,165.4L326.6,164.9L327.9,166.5L329.9,166.9L332.2,160.7L339.9,163.8L340.9,162.7L342.3,162.8L345.1,165.4L352.8,164.9L354.4,167.5L354.6,172.6L358.6,189.5L362.2,199.5L363.5,201.3L362.2,202.5L369.8,207.9L367.9,209.2L367.9,212.4L366.7,212.7L363,217L350.3,216.6L344.4,211.6L338.7,211.5L338.7,208.4L312.6,208.6L311.9,209.5L306.6,209.9L307.9,214.7L311.7,214.7L311.7,216.3L318.3,216.5L317.9,217.8L317.1,217.8L317.1,219.4L315.6,219.4L315.6,224L317.2,224L317.2,227.1L332.6,227.1L332.2,244.2L329.1,244.3L328.9,246.4L328.9,247.3L332.2,247.5L332.3,253.5L327.1,253.5L315.1,249.8L304.3,249.5L303,253.5L297.4,251.1L293.9,248.7L295.6,244.6L295.6,233.4L301.4,233.4L301.4,238.3L310.6,239.6L310.6,241.3L311.8,241.3L311.8,224L307.9,224L308.4,217.8L295.5,217.7L295.5,215.4L291.4,215.7L290.4,214.7L281.6,219.8L281.6,218.7L279.4,218.4L278.3,219.2L278.2,220.7L271.3,220.6L270.8,216.3L273.9,213.8L273.8,207.6L275,205.1L274.6,202.4L270.7,202.4L270.7,203.1L268.3,203.7L269.3,205.5L267.6,205.5L267.7,218.1L266.6,218.4L264.6,216.2L264.5,211.8L262.2,211.7L261.8,216.8L259.9,219.6L256.8,216.5L257.6,214.9L255.3,213.1L254.6,205.5L253.8,205.5L253.4,202.6L252.3,201.7L252.8,198.2L252.3,196.7L253.8,195.5L255.5,195.6L255.6,194.8L254.1,193.7L253.9,192.5L254.6,192.3L254,191L256.6,190.3L253.7,188.7L253.2,187.5L247,185.6L243.6,186.9L241,186L235.7,187L229,184.9L226.5,186.9L223.9,186.4L220.6,187.9L218.2,187.3L216.2,190.1L215,190.5L217.9,181.2L218.1,174.9L220.3,168.7L219.2,157.2L220.5,153L220.5,149.5L219.1,145.2L240,145.2Z"/>
+      <path class="district-path" id="d5" data-cd="5" d="M184.5,139L184.5,142.1L186.4,142.1L186.4,144.5L193.7,144.4L193.7,151.3L198.1,151.5L200.1,154.5L203,155.7L203,157L215,157.2L219.2,160.9L220.3,168.7L218.1,174.9L217.9,181.2L215,190.5L216.2,190.1L218.2,187.3L220.6,187.9L223.9,186.4L226.5,186.9L229.5,184.9L237.6,187.1L241,186L243.7,186.9L247,185.6L253.2,187.5L253.7,188.7L256.6,190.3L254,191L254.6,192.3L253.9,192.5L254.1,193.7L255.6,194.8L255.5,195.6L253.8,195.5L252.3,196.7L252.8,198.2L252.2,201.6L253.4,202.6L253.8,205.5L254.6,205.5L255.3,213.1L257.3,214.3L256.7,216.4L257.8,217.9L252.3,217.9L252.3,221L249.2,221L249.3,227.5L252.2,227.5L252.2,230.1L251.5,230.3L251.8,233.8L253.5,234L254.5,236.4L255.3,236.7L256.7,239.6L256.1,240L258.8,244.5L258.3,244.7L264,253.4L264.6,252L264.1,249.6L279.9,249.6L280,244.7L284.4,244.6L284.4,247.6L288,245.3L288.1,243.9L285.4,238.6L279.8,238.9L279.8,236.8L274.9,236.8L274.9,233.1L284.5,233L284.4,230L285.9,230L285.9,228.4L286.5,228.4L286.5,230L289.3,229.9L289.3,227.4L284.6,227.5L284.6,222.7L287.4,221.3L287.8,225.4L289.3,225.3L289.3,224L292.1,224L292.1,222.5L294.3,222.4L294.6,223.9L301.7,224L301.7,222.4L307.9,222.5L307.9,224L311.8,224L311.8,241.3L310.6,241.3L310.6,239.6L301.4,238.3L301.4,233.4L295.6,233.4L295.6,244.6L291.8,254.4L285.2,252.9L284.7,260.4L278.2,258.5L274.8,271.8L277,273.6L269.5,278.8L270,279.9L267.4,280.4L268,281.3L264.3,284L263.4,282.5L255.4,288L234.3,256.7L233.6,252.8L235.9,251.2L229.6,241.4L225.9,242.6L216.2,229L214.3,217.2L212.5,214.7L213.3,209.7L209.8,203.6L209.9,197.2L212.8,192L211.4,187.5L205.4,187.3L204.2,186.3L200.9,187.4L199.7,186.8L196.7,188.2L195.9,188L196,187L194.8,189.3L191.7,186.5L188.2,188.1L182,189L175.1,187.6L174.5,186.5L173.6,187.6L173,186L172.1,187.2L171.1,187L171.1,184.7L175.3,184.6L175.2,174.7L174.1,172.9L175.2,172.9L175.2,169L176.2,169.6L178.3,162.9L178.3,139L184.5,139Z"/>
+      <path class="district-path" id="d6" data-cd="6" d="M216.7,100.2L225.1,100.3L225.1,97.2L227.5,97.2L228.6,91.1L232.6,84.2L231.6,83.1L238.5,72.3L240.2,75.4L256.9,94.4L275,78.4L279,79.3L280.6,81L281.3,79.8L283.8,80.4L282.5,85L285.2,87.4L286.9,86L289.1,88.5L288.6,89L289.7,90.3L289.1,90.8L290.3,92.1L291.6,91.8L291,93.9L292,101.9L297.2,108.4L296.8,109.1L292,108.6L290.3,111.1L291.7,112.5L290.7,114.1L289.3,114.1L289.3,120.3L270.8,120.3L270.8,109L252.3,109L249.5,121.2L233.8,117.5L233.8,126.5L240.1,126.5L240.1,132.8L235.4,132.7L235.4,138.1L240,138.1L240,145.2L219.1,145.2L220.3,148.1L220.6,152.1L219.2,156.6L219.2,160.9L215,157.2L203,157L203,155.7L200.1,154.5L198.1,151.5L193.7,151.3L193.7,144.4L186.4,144.5L186.4,142.1L184.5,142.1L184.4,120.3L190.6,120.3L190.6,109.5L216.6,109.2L216.7,100.2Z"/>
+      <path class="district-path" id="d7" data-cd="7" d="M191.6,13L194.9,10L202.7,15.7L254.2,16.4L254.2,17L254.9,16.4L255.4,16.7L253.7,18.2L253.6,20.1L257.1,21L259.7,19.8L258.7,18.5L258.7,16.4L264.6,16.4L264.8,23L267.9,25.2L271,24.9L271,26.5L267.8,27.9L267.7,33.7L265.6,33.4L265.7,35.2L264.5,35.2L264.4,41.3L267.6,41.4L267.5,44.5L265.9,44.4L265.8,47.5L261.9,47.4L262,49L261,48.8L261.7,51.4L264,54L267.2,53.6L268.5,47.6L270.5,47.6L270.6,44.5L272.8,44.5L272.8,43L277.2,43L277.2,44.6L280.4,44.6L280.8,49.2L277.6,49.2L277.6,50.7L279.2,50.7L278.4,55L287.7,56.7L287.1,56.4L287.1,53.8L289.7,53.8L288.6,57.1L289.4,57.5L290.3,56.3L291.4,58.8L293.6,58.4L300.4,60.1L302.5,60.1L302.5,57L320.1,57L320,53.9L339.4,53.9L339.5,47.7L345.7,47.8L348.8,48.2L348.5,60.5L357.7,60.7L357.8,57.7L382.4,57.7L382.3,70.1L369.7,70L369.8,82.8L363.6,82.7L363.6,84.5L362.6,84.1L363.1,91.1L362.5,108.8L311.1,109.6L310.9,106.5L307.8,106.6L307.7,103.5L292.9,103L292,101.9L291,94L291.6,91.8L290.3,92.1L289.1,90.8L289.7,90.3L288.6,89L289.1,88.5L286.9,86L285.2,87.4L283,86L282.5,85L283.8,80.4L281.3,79.8L280.6,81L279,79.3L275,78.4L256.9,94.4L240.2,75.4L238.5,72.3L231.6,83.1L232.6,84.2L228.6,91.1L227.5,97.2L225.1,97.2L225.1,100.3L216.7,100.2L217.4,66.2L220.6,52.3L220.4,49.7L208.1,34.2L203.2,26.6L194.9,20L191.6,13Z"/>
+      <path class="district-path" id="d8" data-cd="8" d="M332.7,266.8L350.4,266.8L350.4,271.3L347,270.4L347,274.2L345.1,274.2L345,289.1L338.9,289.1L338.9,312.7L345.1,312.7L345.1,313.5L346.1,313.8L352.8,313.4L352.7,332.4L359.1,332.4L359.1,340.9L371.6,340.8L371.9,340L371.5,351L368.3,351L370.5,352.1L371,353.7L361.4,357.2L353.2,357.2L352.8,359.3L345,359.4L345,332.9L338.9,332.9L338.9,341L337.4,341L337.3,344.9L335.4,344.9L335.4,348L332.7,348L332.7,351.1L329.6,351.1L329.6,344.9L326.5,344.9L326.5,323.3L320.3,323.3L320.3,326.3L315.7,326.3L315.7,321.7L314.2,321.7L314.1,314L297.7,314L297.7,312.9L301.8,312.8L301.8,307.5L312.7,308.2L312.7,301.5L316.7,301.5L316.6,296.5L313.8,291.5L309.4,294.4L302.8,294.4L299.4,297.8L298.2,300.9L297.1,296.8L298.2,290.6L299.8,288L304,288.3L308.9,291L312.4,287.8L314.2,289.1L314.4,292.3L316.5,295.3L326.2,295.2L326.6,276.6L332.8,276.6L332.7,266.8Z"/>
+      <path class="district-path" id="d9" data-cd="9" d="M361.3,258.6L364.6,260L359.9,267.1L360.7,267.7L359.7,269.5L378.5,280.4L381.8,281.3L383,307.4L370,307.3L370.2,338.4L371.6,340.8L359.1,340.9L359.1,332.4L352.7,332.4L352.8,313.4L346.1,313.8L345.1,313.5L345.1,312.7L338.9,312.7L338.9,289.1L345,289.1L345.1,274.2L347,274.2L347,270.4L348.7,270.4L356,274.4L357.2,272.1L358.1,262.6L361.3,258.6Z"/>
+      <path class="district-path" id="d10" data-cd="10" d="M332.6,230.2L333,233.3L338.8,233.3L338.8,239L345,239.1L345,244L351.6,244.7L350.2,247.2L350.2,246.5L347.7,246.5L347.7,247.4L345.2,247.4L345.5,253.8L339.1,253.8L338.9,266.9L332.7,266.8L332.8,276.6L326.6,276.6L326.2,295.2L316.5,295.3L314.4,292.3L314.2,289.1L312.4,287.8L308.9,291L304,288.3L299.8,288L298.3,290.6L295.6,291.3L294.7,293L293.1,293.6L291.5,292.3L291.9,285.1L287.7,284.9L287.3,288.2L286.6,285.4L287.6,282.7L283.9,283L281.5,280.6L283.9,280.1L285.1,274L287,272.4L288.2,272.8L289.8,268.4L277.9,273.7L274.8,271.8L278.2,258.5L284.7,260.4L285.2,252.9L291.8,254.4L293.5,248.7L303,253.5L304.3,249.5L315.1,249.8L327.1,253.5L332.3,253.5L332.2,247.5L328.9,247.3L328.9,246.4L329.1,244.3L332.2,244.2L332.6,230.2Z"/>
+      <path class="district-path" id="d11" data-cd="11" d="M151.4,187L152.3,186.4L154.5,187.1L157.3,189.9L157.9,188.7L159.5,188.5L158.8,190L159.7,190.8L163.8,190.9L167.7,189.6L168.1,188.3L169.8,187.5L169.7,186.4L171.9,187.2L172.9,186L173.6,187.6L174.5,186.5L175.1,187.6L182,189L188.2,188.1L191.5,186.5L194.8,189.3L196,187L195.9,188L196.7,188.2L199.7,186.8L200.9,187.4L204.2,186.3L205.4,187.3L211.4,187.5L212.8,192L209.9,197.2L209.8,203.6L213.3,209.7L212.5,214.7L214.3,217.2L215.7,227.8L229.4,246.9L226.7,248.8L225.1,247.1L223.6,242.8L221.1,240.6L219.6,242.2L220.3,246.4L228.3,257.7L230.1,256.4L231.3,258.2L234.1,256.2L255.4,288L253.2,289.5L256,292.8L253.4,294.7L255.5,297.8L254.1,299.4L250,300L248.3,297.2L238.3,303.8L237.6,302.4L234.1,304.1L235,306.2L242.1,302.4L246.5,307.5L247.3,307L246.3,301.5L254.4,300.4L256.9,297.9L258.2,295.3L264.2,299L266.4,295.4L268.4,297L267.2,298.5L267.6,299.1L266.3,301.9L262.8,305.1L264.7,306.5L263.9,307.4L267.4,310L269.3,308.6L271.9,312.1L269.4,312.7L270,313.7L278.1,318.3L288.3,317.8L288.3,312.9L297.7,312.9L297.7,314L289.4,314.1L289.5,325.7L287.5,326L288.4,326.7L288.7,329.6L284.9,331.7L283.3,334.2L283.3,338.9L289.4,338.8L289.5,357.4L290.7,357.4L290.7,358.9L283.4,358.9L283.4,357.3L248,357.4L248.8,363.6L249.5,363.6L249.5,365.1L251.1,365.1L251.1,366.6L252.6,366.7L252.6,369.7L247.1,369.7L238.7,349.9L230.8,334L228.4,331.5L225.5,332.1L232,328.9L245.4,319.5L239,312.6L229.5,310L223.6,314.6L230.8,326.7L224.5,330.3L225.4,329.5L225.9,327.3L223.9,322.7L218.3,314.2L215.3,311.1L214.1,311.4L208.9,302.6L237.5,284.2L230.8,274.4L227.9,273L227.5,271.4L226.4,271.7L213.7,258.6L209,262.9L201.5,255.2L194.8,263.6L192.2,264.2L191.5,270.2L184.9,277.2L178.9,272.6L166.2,265.9L162.5,265.2L157.4,266.2L150.2,263.4L148,258.2L147.8,239.2L127.4,234.9L151.4,187Z"/>
+      <path class="district-path" id="d12" data-cd="12" d="M191.6,13L194.9,20L203.2,26.6L208.1,34.2L220.5,49.9L220,55.6L217.4,66.2L216.6,109.2L190.6,109.5L190.6,120.3L172.1,120.4L172.1,115.7L169,115.7L169,114.2L166.5,114.2L165.1,112L165,109.9L153.5,110.1L153.5,103.4L147.3,103.4L147.3,100.3L140.4,100.2L138.6,97.2L123.4,97.2L125,101.6L122.7,105L122.7,110.7L116.4,110.8L116.5,139.1L95.7,139L84.4,141.4L78.6,140.4L78.6,134.9L83.5,136.6L86.2,136.2L86.8,130.3L85.5,130.3L85.5,131.8L78.7,131.8L78.9,119.6L82.4,119.5L82.5,116.5L89.2,116.5L89.8,113.5L85.5,113.5L85.5,107.4L88.6,107.4L89.1,104L91.7,104.3L93.6,95L104.6,95.9L105.7,94.5L103.9,94.5L103.8,73.3L103.2,67.9L109,63.2L121.5,60.9L129.6,63.7L132.7,58.9L132,52.9L135.3,39.5L137.4,39L146.8,43.1L148,45.9L149,46.5L155.3,42.6L157,42.6L159.4,45L168.7,43L166.3,38.6L166.7,37.1L164.3,30.5L165.4,28.5L164.8,27.1L173.5,29.5L191.6,13Z"/>
+      <path class="district-path" id="d13" data-cd="13" d="M382.4,190.6L384.2,192.5L385.8,192.5L386.2,193.6L387.6,193.4L389.3,195.8L379.7,200.8L375.9,203.8L374.8,205.7L377.2,206.3L379.3,208.2L380,213.6L381.7,216.7L387.3,219L388.8,220.9L390.4,227.7L383.3,222.3L382.8,223L381.2,222.2L379.3,224.9L377,225.2L376.1,227.6L374.6,228.3L373.6,231.2L375.2,235.7L369.2,232.9L367.6,236L367.7,239L366.7,240.2L367.6,246L366.2,248.6L350.1,239.9L350.2,244L345,244L345,239.1L338.8,239L338.8,233.3L333,233.3L332.6,227.1L317.2,227.1L317.2,224L315.6,224L315.6,219.4L317.1,219.4L317.1,217.8L317.9,217.8L318.3,216.5L311.7,216.3L311.7,214.7L307.9,214.7L306.6,209.9L311.9,209.5L312.6,208.6L338.7,208.4L338.7,211.5L344.4,211.6L350.3,216.6L363,217L366.7,212.7L367.9,212.4L367.9,209.2L369.8,207.9L362.2,202.5L363.5,201.3L362.2,199.5L358.6,189.5L354.6,172.6L354.4,167.5L356.3,167.5L365.7,189.4L371.4,197L373.6,195.1L371.9,193.1L372.1,192.1L382.4,190.6Z"/>
+      <path class="district-path" id="d14" data-cd="14" d="M432.4,192.6L432.8,195L431.8,196L431.8,197.8L429.3,201.2L426.1,202.6L425.4,204.2L425.4,214.2L441.4,214.1L441.3,214.8L437.6,218.6L437.7,234.3L436.9,234.7L436.9,237.7L434.3,245.2L415,245.7L415.2,269.4L415.9,269L415.9,269.9L415.2,269.9L415.3,285.5L415.9,285.5L415.9,287.4L406.2,286L406.2,287.6L404.9,287.5L403.9,285.6L400.8,286.2L397.7,285.2L381.7,285.8L381.8,281.3L378.5,280.4L359.7,269.5L360.7,267.7L359.9,267.1L364.6,260L361.3,258.6L367.5,253.8L375.2,244.9L379.3,249.5L380.7,248L383,248.7L385.1,246L390.8,245.3L392.6,240.7L396.4,242.1L395.4,244.7L406.7,242.4L412,243.3L412.9,240.8L414.3,233.5L413.8,232.6L411.7,235.3L410.5,231.7L411.5,229.5L410.2,229.2L411.2,227.3L410.6,226.6L414.9,225L414.8,220.7L416.1,220.6L417.3,214.3L416.4,214.3L417.1,212.3L416.2,212L417.3,209.6L416.1,209.6L419.6,206.4L417.5,203.3L421.4,200L418.7,198L395,192.4L389.3,195.8L387.6,193.4L386.2,193.6L385.8,192.5L385,192.9L383.3,191.6L382.4,190.6L384.9,190.2L384.1,183.5L386,183.5L386,182.6L390.1,182.6L390.1,180.5L389.2,180.5L389.5,173.1L390.7,172.3L391.2,170.5L396.2,172.4L401.6,172.7L402,173.5L406,172.5L407.9,169.7L411.1,168.9L411.1,171.1L421.3,171.1L420.7,174.2L423.6,178L419.9,179.8L419.6,184.2L422,186.3L422.1,188.1L423,187.8L423.8,190.4L426.4,190.3L426.2,193.2L430.8,190L433.9,190.8L432.4,192.6Z"/>
+      <path class="district-path" id="d15" data-cd="15" d="M345,359.4L352.8,359.3L353.2,357.2L361.4,357.2L371,353.8L370.5,352.1L368.3,351L371.5,351L371.5,346.8L375,346.9L375.2,338.2L376.2,338.2L376.2,337.4L378.5,337.4L378.5,338.2L385.8,338.2L385.8,342.6L388.2,342.6L388.2,343.5L385.1,343.6L385.1,344.4L388.5,344.4L389.5,350.4L388,356.6L388.4,359L371.5,358.6L371.9,364L351.7,363.9L351.6,386L351,386.3L352.2,415.4L345.7,418.9L345.7,422.7L349.5,422.7L349.5,424.3L348.8,424.4L348.8,429.4L339.7,429.4L339.7,470.8L351.1,470.9L364.1,469.6L364.1,465L369.7,464.8L368.3,469.3L383.3,468.4L388.6,475.2L392.9,463.5L389.6,448.1L391,443.7L392.4,448.1L393.9,458.2L393.9,465.3L390.3,477.4L395.2,483.7L377.7,499.6L381,504.3L375.2,506.4L383.6,530.4L373.6,533.9L377.2,540.6L369,539.6L367.1,533.8L368.5,529.4L380.8,525L376.4,512.4L374,510.8L371.6,515.5L373,516L372.2,517.9L373.6,522.1L377.8,520.8L378.6,523.1L364.5,527.6L364,527.5L364.9,526.3L364.9,524.5L363.4,523.9L363.8,522.8L363,521.3L359.7,522.7L361.8,525.5L361.5,528.7L362.1,528.5L364,534.8L361.9,535.4L359.9,529.4L361.1,529L359.6,528.8L360.9,527.7L359.3,528.2L360,523.9L359.1,523.1L358.6,526.2L357.1,523.4L356.9,519.3L360.2,512.7L368.9,503.3L377.5,499.6L380,497.3L374.4,499.2L374.7,497.9L373.6,497.1L374,496.4L376.2,498.2L375,495.6L374.4,495.7L375.1,492.9L380.5,488.2L374.9,491.6L373.9,494L367.7,501.9L367.4,497.4L364.6,498L366.4,500.1L366.6,503.4L362.3,508.8L361.6,504L363.4,501.8L363.6,500.2L360.2,503.9L360.5,508.2L358.8,507.6L357.2,505L359.8,496.9L355.1,497.6L355.4,496.9L354.2,495.2L353.3,495.8L356.3,502.2L353.2,506L346.5,507L350.8,506.7L352,507.8L355,506.1L357.6,510.3L357.1,512.7L354.8,511.8L354.3,512.4L356.8,514.1L354.2,519.7L354.1,521.4L354.6,523.9L357.3,529.1L354.1,526.9L357.6,530.2L359.5,536.6L358.2,537L356.5,531.4L355.7,531.8L358.3,540.1L357.6,542L355.7,540.4L356.4,537.2L355.3,533.6L354.5,536.6L353.1,532.5L350.4,533.4L351,535.3L352.2,535L352.4,535.8L351.3,536.2L352,538.4L353.1,538.1L353.3,538.9L350.8,539.6L350.1,542.4L351.2,542.8L351.3,545.4L355.2,546.7L359,549.6L351.6,546.2L349.9,546.6L347.6,549L343,550L342.5,547.4L340.8,545.9L329.8,541.4L326.5,542.3L326.3,541.3L324.6,541L324.2,539.3L322.7,539.7L322.4,538.5L315.5,535.7L318.9,528.9L324.2,528.9L324.3,527.5L326,526.7L326,523.9L324.7,523.5L326,523L325.7,519.6L324.9,518.6L326,517.7L326,514.1L332.4,514.1L332.6,504.8L338.4,504.8L337.7,502.4L332.7,502.4L332.7,500.7L330.8,500.4L332.8,490.1L334.5,490.2L333.5,486.2L332.4,486.6L332.2,484.2L332.9,484L332.5,461.5L333.2,461.2L332.6,413L339.5,412.9L339.7,408.8L343,408.8L343,412.2L340.4,412.3L340.4,413L345.7,412.4L345,359.4Z"/>
+
+      <text class="d-label" x="392.6" y="233.2">1</text>
+      <text class="d-label" x="268.7" y="144.7">2</text>
+      <text class="d-label" x="128.5" y="144.4">3</text>
+      <text class="d-label" x="307.3" y="198.8">4</text>
+      <text class="d-label" x="234.5" y="213.7">5</text>
+      <text class="d-label" x="220.7" y="115.8">6</text>
+      <text class="d-label" x="272.6" y="59.8">7</text>
+      <text class="d-label" x="321.4" y="313.1">8</text>
+      <text class="d-label" x="360.8" y="298.2">9</text>
+      <text class="d-label" x="307.9" y="263.6">10</text>
+      <text class="d-label" x="242.8" y="280.7">11</text>
+      <text class="d-label" x="160.5" y="83.9">12</text>
+      <text class="d-label" x="374.3" y="208.1">13</text>
+      <text class="d-label" x="424.2" y="228.2">14</text>
+      <text class="d-label" x="336.4" y="445.9">15</text>
+    </svg>
+  </div>
+
+  <div class="panel" id="panel" aria-live="polite">
+    <div class="p-head">
+      <div class="p-top">
+        <div>
+          <div class="p-name" id="p-name">CD 8</div>
+          <div class="p-area" id="p-area"></div>
+        </div>
+        <span class="badge" id="p-badge">0</span>
+      </div>
+      <div class="p-rank" id="p-rank"></div>
+    </div>
+
+    <div class="p-sec">
+      <div class="sec-label">Index scores</div>
+      <div class="idx-row" id="idx-row"></div>
+    </div>
+
+    <div class="p-sec">
+      <div class="sec-label">Health outcomes</div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="p-sec">
+      <div class="sec-label">Policy snapshot</div>
+      <p class="policy" id="policy"></p>
+      <p class="policy-src">Compiled from city council, Metro, LA Housing Department, and state agency records, 2025 and 2026. Not scored, and not part of any index.</p>
+    </div>
+
+    <div class="p-actions">
+      <button class="btn btn-primary" type="button" id="btn-share">Share this district</button>
+      <button class="btn btn-ghost" type="button" id="btn-copy">Copy link</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap rank-sec">
+  <div class="rank-head">
+    <h3>All 15 districts, ranked</h3>
+    <p>Sorted by combined score. Select a row to open it on the map.</p>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <caption class="sr-only">Council districts ranked by combined score, with each index score</caption>
+      <thead>
+        <tr>
+          <th scope="col">Rank</th>
+          <th scope="col">District</th>
+          <th scope="col">Area</th>
+          <th scope="col" class="num">Resources</th>
+          <th scope="col" class="num">Health risk</th>
+          <th scope="col" class="num">Neighborhood</th>
+          <th scope="col" class="num">Combined</th>
+          <th scope="col" class="num">Life exp.</th>
+        </tr>
+      </thead>
+      <tbody id="rank-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="about">
+  <div class="wrap about-grid">
+    <div>
+      <h3>Why this tracker exists</h3>
+      <p>A person's address is one of the strongest predictors of their health and financial security. This tool puts that connection on a map, so residents, advocates, and council staff can see where the gaps are widest and act on them.</p>
+    </div>
+    <div>
+      <h3>How the indices work</h3>
+      <p>Every district gets three scores on a 0 to 100 scale. Financial and community resources covers income, school ratings, homeownership, and nature access. Health risk covers substance use, chronic disease, and life expectancy, and a low number is the good result. Neighborhood access covers food retail, financial services, and recreation.</p>
+    </div>
+    <div>
+      <h3>Built for civic action</h3>
+      <p>Built by a Los Angeles high school student to get more young people into city data. District shapes are the official city boundaries from the 2012 redistricting. The 2021 boundaries are the next upgrade. Sources include LA County Public Health, USC Neighborhood Data for Social Change, USDA, CFPB, and LA City Planning. <a href="methodology.html">Read the methodology</a></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap footer-in">
+    <span>LA Health &amp; Wealth Tracker · Prototype · Los Angeles, CA</span>
+    <span>Boundaries from the 2012 redistricting · Policy notes current to September 2026</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const districts = {
+  1:  { area:'Northeast LA · Glassell Park · Highland Park', res:45, hlth:62, pol:40, le:76,
+        chips:[['Substance use: elevated','bad'],['Asthma: moderate','ok'],['Life expectancy: 76 yrs','ok']],
+        policy:'Eviction filings fell about 10 percent over two years against a 4 percent citywide decline, per an October 2025 council report. The city issued its first Tenant Anti-Harassment Ordinance citation in Highland Park in August 2025. Chinatown has had no full-service grocery store since 2019, with the last market closing in 2025. Pico-Union and Westlake ZIP codes joined the Right to Counsel eviction defense priority list in August 2025.' },
+  2:  { area:'North Valley · Studio City · Toluca Lake', res:61, hlth:44, pol:58, le:80,
+        chips:[['Substance use: low','good'],['Obesity: moderate','ok'],['Life expectancy: 80 yrs','good']],
+        policy:'Metro broke ground on $668 million in G Line bus rapid transit improvements in March 2025, concentrated between North Hollywood and Van Nuys, with completion set for 2027. A 100-bed shelter village broke ground on Van Nuys Boulevard in August 2025. The Southeast Valley Community Plans Update was refining draft zoning as of April 2026, the first revision since the late 1990s. Three North Hollywood and Sun Valley ZIP codes are on the Right to Counsel priority list.' },
+  3:  { area:'West Valley · Woodland Hills · Tarzana', res:70, hlth:36, pol:67, le:83,
+        chips:[['Substance use: low','good'],['Diabetes: moderate','ok'],['Life expectancy: 83 yrs','good']],
+        policy:'The Promenade mall in Warner Center was demolished by August 2026, clearing the site for Rams Village, a 52-acre phased project with more than 3,100 homes, 5 percent reserved for very low income households. Reseda Rising lists a $26 million skate rink, a theater food hall, and a $7.2 million confluence park with 2026 milestones. More than $50 million is programmed for the LA River bike path from Vanalden to the Sepulveda Basin. Council approved a zoning amendment in August 2026 that blocked a 300-unit project on a very high fire hazard site.' },
+  4:  { area:'Hollywood Hills · Sherman Oaks · Los Feliz', res:68, hlth:40, pol:63, le:81,
+        chips:[['Substance use: low','good'],['Chronic disease: low','good'],['Life expectancy: 81 yrs','good']],
+        policy:'The City Council changed the rent stabilization increase formula in November 2025 to 90 percent of CPI, with a 1 percent floor and a 4 percent ceiling, replacing the prior 3 to 8 percent range. CalFire\'s March 2025 maps raised very high fire hazard acreage in LA County about 30 percent, and the state approved Zone 0 ember-resistant rules in August 2026. Council upheld a 139-unit Los Feliz building with a ground-floor grocery store in October 2025. The Southeast Valley plan update covers Sherman Oaks and Studio City, with a January 2026 draft.' },
+  5:  { area:'West LA · Bel Air · Westwood · Cheviot Hills', res:88, hlth:22, pol:85, le:86,
+        chips:[['Substance use: lowest of the 15','good'],['Chronic disease: lowest of the 15','good'],['Life expectancy: 86 yrs','good']],
+        policy:'Metro opened D Line Extension Section 1 in May 2026, with Westwood and UCLA service scheduled for fall 2027. The Metro board selected a fully underground heavy rail route for the Sepulveda Transit Corridor in January 2026, estimated at $24.2 billion. The council office announced closure and remediation of the West Pico Drill Site in January 2025. No CD 5 ZIP codes appear on the Right to Counsel priority list, which targets the highest eviction filing rates.' },
+  6:  { area:'Van Nuys · Reseda · North Hollywood', res:38, hlth:68, pol:35, le:73,
+        chips:[['Substance use: high','bad'],['Diabetes: elevated','bad'],['Life expectancy: 73 yrs','bad']],
+        policy:'Metro awarded a $2.43 billion contract in 2026 for the East San Fernando Valley Light Rail on Van Nuys Boulevard, 11 stations, with completion expected in 2031. Vista Terrace opened in Panorama City in April 2026 with 102 affordable homes and three years of discounted transit passes for residents. The City Planning Commission advanced new zoning around three G Line stations in June 2026, covering roughly 100,000 residents. SB 526, sent to the Governor in September 2026, would require fence-line particulate monitoring at Sun Valley aggregate facilities starting in 2027.' },
+  7:  { area:'Sunland · Pacoima · Arleta · Shadow Hills', res:35, hlth:72, pol:32, le:72,
+        chips:[['Asthma: elevated','bad'],['Childhood obesity: high','bad'],['Life expectancy: 72 yrs','bad']],
+        policy:'The Green Together Collaborative in Pacoima completed phase one of a state climate grant as of 2025, including an all-electric DASH route, three solar charging stations, and solar workforce training for nearly 100 people. Tree planting and green space work continue through December 2026. Whiteman Airport will stay open, per a January 2026 FAA letter citing perpetual federal grant obligations. New federal CalFresh work requirements took effect in June 2026, and LA County reported 108,000 residents lost benefits between July 2025 and mid-2026.' },
+  8:  { area:'South LA · Hyde Park · Leimert Park', res:28, hlth:76, pol:28, le:70,
+        chips:[['Chronic disease: highest of the 15','bad'],['Substance use: very high','bad'],['Life expectancy: 70 yrs','bad']],
+        policy:'Phase 1 of the Baldwin Hills Crenshaw Plaza redevelopment broke ground in March 2026 on the 42-acre site, with a 25 percent local hiring commitment and full buildout projected at five to seven years. The Rail to Rail path opened in May 2025, 5.5 miles along Slauson Avenue with 472 new trees and nearly 500 pedestrian lights. K Line weekday ridership rose 139.5 percent year over year after the LAX transit center opened in June 2025. Destination Crenshaw was still under construction as of August 2026, with Sankofa Park restarting in April 2026 toward a fall 2026 opening.' },
+  9:  { area:'Central LA · South LA · Exposition Park', res:30, hlth:74, pol:30, le:71,
+        chips:[['Chronic disease: elevated','bad'],['Substance use: elevated','bad'],['Life expectancy: 71 yrs','bad']],
+        policy:'Officials announced nearly $100 million in proposed Exposition Park funding in January 2026, covering deferred maintenance, roadways, and accessibility ramps ahead of the 2026 World Cup and 2028 Olympics. The larger $360 million project converting parking lots into about six acres of green space will not break ground until after 2028. Slauson Connect broke ground in March 2026, a $40 million community center with a 1.5-acre park, childcare facility, and youth media studio. Inell Woods Park opened in June 2025.' },
+  10: { area:'West Adams · Crenshaw · Mid-City · Koreatown', res:42, hlth:58, pol:44, le:76,
+        chips:[['Substance use: moderate','ok'],['Diabetes: moderate','ok'],['Life expectancy: 76 yrs','ok']],
+        policy:'Atto on Hobart opened in Koreatown in August 2026 with 80 affordable units, the first project completed under the 2022 Executive Directive 1 fast-track. City officials noted in 2026 that nearly 90 percent of Koreatown residents are renters and one in four households is overcrowded. CD 10 recorded the highest eviction defense representation count of any district, 434 households in the 18 months to August 2026. The city moved in April 2026 to acquire a vacant Koreatown lot for a pocket park, funded by up to $2 million in park fees.' },
+  11: { area:'Venice · West LA · Pacific Palisades · Brentwood', res:78, hlth:31, pol:72, le:84,
+        chips:[['Substance use: low','good'],['Chronic disease: low','good'],['Life expectancy: 84 yrs','good']],
+        policy:'The January 2025 Palisades fire reshaped district policy. Council waived residential and commercial rebuilding permit fees in February 2026, with refunds issued by July 2026. More than 2,600 residential rebuilding permits had been issued across the Palisades and Altadena burn areas by January 2026, roughly one for every five homes destroyed. Voters decide in November 2026 whether to exempt fire-damaged homes from the Measure ULA transfer tax through 2030, an exemption the Housing Department estimated at about $32 million a year. A court ruled in June 2026 that denial of the 120-unit Venice Dell affordable housing site was unlawful.' },
+  12: { area:'Chatsworth · Granada Hills · Porter Ranch', res:72, hlth:34, pol:68, le:83,
+        chips:[['Chronic disease: low','good'],['Substance use: low','good'],['Life expectancy: 83 yrs','good']],
+        policy:'The CPUC set a natural gas demand threshold in December 2024 as the condition for closing the Aliso Canyon storage facility in Porter Ranch, with no fixed closure date and biennial assessments beginning June 2025. CalFire\'s March 2025 maps raised very high fire hazard acreage in LA County more than 30 percent above the 2011 assessment. The G Line\'s western terminus at Chatsworth is part of a $668 million improvements project finishing in 2027. CD 12 recorded the lowest eviction defense representation count of any district, 61 households in the 18 months to August 2026.' },
+  13: { area:'Hollywood · Silver Lake · Echo Park · Atwater Village', res:52, hlth:53, pol:50, le:77,
+        chips:[['Substance use: moderate','ok'],['Chronic disease: moderate','ok'],['Life expectancy: 77 yrs','ok']],
+        policy:'The City Council rescinded 12 anti-camping zones in CD 13 in August 2026, including sites in Silver Lake and Echo Park. Metro approved the Vermont Transit Corridor bus rapid transit route in March 2025, 12.4 miles with 26 stations through East Hollywood, with service targeted for 2028. The updated Hollywood Community Plan directs growth toward transit corridors near five B Line stations. Measure ULA has raised more than $1.2 billion citywide since 2023, and council shelved a proposed apartment exemption in July 2026.' },
+  14: { area:'Eagle Rock · El Sereno · Boyle Heights · Cypress Park', res:40, hlth:63, pol:38, le:74,
+        chips:[['Asthma: elevated','bad'],['Obesity: elevated','ok'],['Life expectancy: 74 yrs','ok']],
+        policy:'The updated Boyle Heights Community Plan took effect in August 2026, planning about 14,000 housing units by 2040, setting mandatory inclusionary requirements, and calling for soil sampling across the community. The Sixth Street PARC, a 12-acre $60 million park under the viaduct, was anticipated to open in 2026, connecting Boyle Heights to the Arts District. Council approved a $2.6 billion Convention Center expansion in September 2025, committing an average of $89 million a year from the general fund over 30 years. Metro broke ground in May 2026 on bus rapid transit through Eagle Rock along Colorado Boulevard.' },
+  15: { area:'Harbor · San Pedro · Watts · Wilmington', res:33, hlth:70, pol:31, le:72,
+        chips:[['Asthma: high','bad'],['Chronic disease: elevated','bad'],['Life expectancy: 72 yrs','bad']],
+        policy:'The Harbor Commission approved a clean air addendum in August 2026 committing $20 million toward zero-emission drayage truck charging and fueling infrastructure, with annual reporting requirements. The Phillips 66 Wilmington and Carson refinery ceased operations at the end of December 2025, affecting about 600 employees and 300 contractors, with a 444-acre redevelopment proposal in environmental review. Jordan Downs in Watts marked ten years in September 2025, reporting 787 new affordable homes and four new parks. Watts Rising has leveraged more than $160 million beyond its original state and federal grants.' }
+};
+
+const BANDS = [
+  [75, '#0d5c2e'], [62, '#1e8a4a'], [50, '#52b87a'],
+  [42, '#a8dbb8'], [35, '#e8c86a'], [28, '#dd7d4f'], [0, '#a8291a']
+];
+const color = s => (BANDS.find(b => s >= b[0]) || BANDS[BANDS.length - 1])[1];
+
+const combined = d => Math.round((d.res + (100 - d.hlth) + d.pol) / 3);
+
+// Every index view resolves to a "higher is better" 0-100 value
+const VIEWS = {
+  composite: { value: combined,           legend: 'Combined score',                  lo: 'Widest gaps', hi: 'Strongest' },
+  resources: { value: d => d.res,         legend: 'Financial & community resources', lo: 'Fewest',      hi: 'Most' },
+  health:    { value: d => 100 - d.hlth,  legend: 'Health risk (green = lower risk)',lo: 'Highest risk',hi: 'Lowest risk' },
+  policy:    { value: d => d.pol,         legend: 'Neighborhood access',          lo: 'Least',       hi: 'Most' }
+};
+
+const ids = Object.keys(districts).map(Number);
+ids.forEach(id => { districts[id].name = 'CD ' + id; districts[id].combined = combined(districts[id]); });
+
+const ranked = [...ids].sort((a, b) => districts[b].combined - districts[a].combined);
+ranked.forEach((id, i) => { districts[id].rank = i + 1; });
+
+let view = 'composite';
+let selected = null;
+
+/* ---------- hero figures, computed so they cannot drift ---------- */
+const les = ids.map(id => districts[id].le);
+const scores = ids.map(id => districts[id].combined);
+document.getElementById('hs-gap').textContent = (Math.max(...les) - Math.min(...les)) + ' yrs';
+document.getElementById('hs-spread').textContent = (Math.max(...scores) - Math.min(...scores)) + ' pts';
+
+/* ---------- map ---------- */
+const paths = [...document.querySelectorAll('.district-path')];
+
+paths.forEach(p => {
+  const id = +p.dataset.cd;
+  const d = districts[id];
+  if (p.getAttribute('aria-hidden') === 'true') return;
+  p.setAttribute('tabindex', '0');
+  p.setAttribute('role', 'button');
+  p.setAttribute('aria-pressed', 'false');
+  p.addEventListener('click', () => select(id));
+  p.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(id); }
+  });
+});
+
+function paint() {
+  const v = VIEWS[view];
+  paths.forEach(p => {
+    const d = districts[+p.dataset.cd];
+    p.style.fill = color(v.value(d));
+  });
+  document.getElementById('legend-title').textContent = v.legend;
+  document.getElementById('legend-lo').textContent = v.lo;
+  document.getElementById('legend-hi').textContent = v.hi;
+  paths.forEach(p => {
+    const d = districts[+p.dataset.cd];
+    if (p.getAttribute('aria-hidden') !== 'true') {
+      p.setAttribute('aria-label', d.name + ', ' + d.area + '. ' + v.legend + ' ' + v.value(d) + ' out of 100.');
+    }
+  });
+}
+
+document.querySelectorAll('.itab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    view = btn.dataset.idx;
+    document.querySelectorAll('.itab').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+    paint();
+  });
+});
+
+/* ---------- detail panel ---------- */
+const INDEX_DEFS = [
+  { key: 'res',  name: 'Financial & community resources', scale: '0 lowest · 100 highest', raw: d => d.res,  good: d => d.res },
+  { key: 'hlth', name: 'Health risk',                     scale: '0 lowest risk · 100 highest risk', raw: d => d.hlth, good: d => 100 - d.hlth },
+  { key: 'pol',  name: 'Neighborhood access',          scale: '0 lowest · 100 highest', raw: d => d.pol,  good: d => d.pol }
+];
+
+function select(id) {
+  const d = districts[id];
+  if (!d) return;
+  selected = id;
+
+  document.getElementById('p-name').textContent = d.name;
+  document.getElementById('p-area').textContent = d.area;
+  document.getElementById('p-rank').textContent = 'Ranked ' + d.rank + ' of 15 on combined score';
+
+  const badge = document.getElementById('p-badge');
+  const c = color(d.combined);
+  badge.textContent = d.combined;
+  badge.style.background = c;
+  badge.style.color = d.combined >= 42 && d.combined < 62 ? '#1a1a18' : '#fff';
+  badge.setAttribute('aria-label', 'Combined score ' + d.combined + ' out of 100');
+
+  document.getElementById('idx-row').innerHTML = INDEX_DEFS.map(ix => {
+    const raw = ix.raw(d), good = ix.good(d), c2 = color(good);
+    return '<div class="idx">' +
+      '<div><span class="idx-name">' + ix.name + '</span><br><span class="idx-scale">' + ix.scale + '</span></div>' +
+      '<div class="idx-val" style="color:' + c2 + '">' + raw + '</div>' +
+      '<div class="idx-track"><div class="idx-fill" style="width:' + raw + '%;background:' + c2 + '"></div></div>' +
+      '</div>';
+  }).join('');
+
+  document.getElementById('chips').innerHTML = d.chips
+    .map(([label, cls]) => '<span class="chip chip-' + cls + '">' + label + '</span>').join('');
+
+  document.getElementById('policy').textContent = d.policy;
+
+  paths.forEach(p => p.setAttribute('aria-pressed', String(+p.dataset.cd === id)));
+  document.querySelectorAll('#rank-body tr').forEach(tr => {
+    tr.setAttribute('aria-selected', String(+tr.dataset.cd === id));
+  });
+
+  history.replaceState(null, '', '#cd' + id);
+}
+
+/* ---------- ranking table ---------- */
+document.getElementById('rank-body').innerHTML = ranked.map(id => {
+  const d = districts[id];
+  return '<tr data-cd="' + id + '" tabindex="0" aria-selected="false">' +
+    '<td class="num">' + d.rank + '</td>' +
+    '<td class="cd-cell"><span class="swatch" style="background:' + color(d.combined) + '"></span>' + d.name + '</td>' +
+    '<td class="area-cell">' + d.area + '</td>' +
+    '<td class="num">' + d.res + '</td>' +
+    '<td class="num">' + d.hlth + '</td>' +
+    '<td class="num">' + d.pol + '</td>' +
+    '<td class="num"><strong>' + d.combined + '</strong></td>' +
+    '<td class="num">' + d.le + '</td>' +
+    '</tr>';
+}).join('');
+
+document.querySelectorAll('#rank-body tr').forEach(tr => {
+  const id = +tr.dataset.cd;
+  tr.addEventListener('click', () => select(id));
+  tr.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(id); }
+  });
+});
+
+/* ---------- share ---------- */
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function linkFor() {
+  return location.href.split('#')[0] + (selected ? '#cd' + selected : '');
+}
+
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) { return false; }
+}
+
+document.getElementById('btn-share').addEventListener('click', async () => {
+  const url = linkFor();
+  const d = districts[selected];
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'LA Health & Wealth Tracker — ' + (d ? d.name : ''), url });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+  toast(await copyText(url) ? 'Link copied' : 'Copy failed. Use the address bar.');
+});
+
+document.getElementById('btn-copy').addEventListener('click', async () => {
+  toast(await copyText(linkFor()) ? 'Link copied' : 'Copy failed. Use the address bar.');
+});
+
+/* ---------- init ---------- */
+paint();
+const h = location.hash.match(/^#cd(\d+)$/);
+select(h && districts[+h[1]] ? +h[1] : 8);
+</script>
+
+</body>
+</html>
